@@ -17,16 +17,63 @@
 - MAGs binning
 
   
-### 1. 
+### 1. fastp
+```bash
+for sample in aH1_B aH2_A aH2_B aH3_A aH3_B aH4_B aH6_B aH7_B aL1_A aL1_B aL3_B aL4_A aL4_B aL6_A aL6_B aL7_B H1_B H2_A H2_B H3_A H3_B H4_B H5_B H7_A H7_B L1_A L1_B L4_A L4_B L7_A L7_B;
+do
+fastp -i ../00.data/customer/2025/0303/PN20250123027/MbPL202502259/1_rawdata/${sample}_R1.fq.gz \
+      -I ../00.data/customer/2025/0303/PN20250123027/MbPL202502259/1_rawdata/${sample}_R2.fq.gz \
+      -o ${sample}_R1.clean.fq.gz \
+      -O ${sample}_R2.clean.fq.gz \
+      --detect_adapter_for_pe \
+      -w 48 \
+      -j ${sample}.json \
+      -h ${sample}.html
+done
+
+```
 
 
-### 2.
+### 2. remove host 
+移除宿主的DNA
+```bash
+for sample in aH1_B aH2_A aH2_B aH3_A aH3_B aH4_B aH6_B aH7_B aL1_A aL1_B aL3_B aL4_A aL4_B aL6_A aL6_B aL7_B H1_B H2_A H2_B H3_A H3_B H4_B H5_B H7_A H7_B L1_A L1_B L4_A L4_B L7_A L7_B;
+do
+        bowtie2 -p 48 -x /data/zhusitao/database/animal/Homo_Sapiens/hg38/bowtie2/hg38 -1 ../01.fastp/${sample}_R1.clean.fq.gz -2 ../01.fastp/${sample}_R2.clean.fq.gz | samtools view -bS --threads 20 - > ${sample}.meta.bam
+        samtools sort ${sample}.meta.bam -o ${sample}.meta.reads.sorted.bam --threads 24
+        bedtools bamtobed -i ${sample}.meta.reads.sorted.bam > ${sample}.meta.reads.sorted.bed
+        cat ${sample}.meta.reads.sorted.bed | cut -f 4 | awk -F "/" '{print $1}' | sort | uniq > ${sample}.exclude_list.txt
+        seqkit grep -v -f ${sample}.exclude_list.txt -j 16 -i ../01.fastp/${sample}_R1.clean.fq.gz -o ${sample}_R1.clean.remove.fq.gz
+        seqkit grep -v -f ${sample}.exclude_list.txt -j 16 -i ../01.fastp/${sample}_R2.clean.fq.gz -o ${sample}_R2.clean.remove.fq.gz
+done
 
-### 3.
+```
 
+### 3. kraken2 
+reads-based宏基因组分析是指, 不先进行基因组组装, 而直接利用`测序片段`进行分析的方法。该方法通过对短读长进行比对和注释，从中提取功能信息和物种组成，常用于快速评估环境样本中的微生物群落结构和功能潜力。
+kraken2是常用的软件之一。
+- 数据库下载
+```bash
+kraken2-build --standard --threads 24 --db ./
+```
+
+```bash
+for sample in aH1_B aH2_A aH2_B aH3_A aH3_B aH4_B aH6_B aH7_B aL1_A aL1_B aL3_B aL4_A aL4_B aL6_A aL6_B aL7_B H1_B H2_A H2_B H3_A H3_B H4_B H5_B H7_A H7_B L1_A L1_B L4_A L4_B L7_A L7_B;
+do
+kraken2 --db /data/zhusitao/database/Microbes/kraken2/20250313 \
+        --paired --threads 48 \
+        --confidence 0.2 \
+        --minimum-base-quality 20 \
+        --report ${sample}_kraken_taxonomy.txt \
+        --output ${sample}_kraken_output.txt \
+        --gzip-compressed \
+        ../02.bowtie2/${sample}_R1.clean.remove.fq.gz ../02.bowtie2/${sample}_R2.clean.remove.fq.gz
+done
+
+```
 
 ### 4. humann
-[参考](https://github.com/biobakery/humann)
+humann用于物种和功能注释，是read-based方法，不用组装，直接进行物种注释和功能分析。[参考](https://github.com/biobakery/humann)
 - 安装
 ```bash
 pip install humann
@@ -70,3 +117,37 @@ $ humann_config  --update database_folders utility_mapping /home/zhusitao/minico
 # HUMAnN configuration file updated: database_folders : utility_mapping = /home/zhusitao/miniconda3/envs/metagenome/lib/python3.6/site-packages/humann/data/misc
 
 ```
+
+
+### 5 contigs-based
+使用不同的软件进行组装
+
+#### megahit
+
+#### metaSPAdes
+
+
+### 6 prodigal
+
+基因预测
+
+
+### 7 Mmseqs2
+去冗余
+
+### 8 salmon
+
+基因表达量定量
+
+
+### 9 功能注释
+
+eggNOG (COG/KEGG/CAZy)
+CARD
+dbCAN2
+VFDB
+
+### 10 binning分箱
+
+maxbin2
+metabat2
