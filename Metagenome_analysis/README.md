@@ -183,8 +183,14 @@ humann2_join_tables --input $OUTPUT_DIR --output humann2_genefamilies.tsv --file
 使用不同的软件进行组装
 
 #### megahit
+seqkit stats result/megahit/contigs/*.contigs.fa > result/megahit/contig_stats
+
 
 #### metaSPAdes
+
+#### quast
+组装质量评估
+[软件地址](https://github.com/ablab/quast)
 
 
 ### 6 prodigal
