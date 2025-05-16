@@ -127,8 +127,49 @@ $ humann_config  --update database_folders utility_mapping /home/zhusitao/minico
 humann --input $SAMPLE --output $OUTPUT_DIR --threads 24
 
 ```
-- metaphlan结果合并
 
+- 结果文献
+[Output](https://github.com/biobakery/humann?tab=readme-ov-file#output-files)
+HUMAnN生成5个结果文件，`Gene families file`, `Reactions file`, `Pathway abundance file`, `MetaPhlAn file`, `intermediate temp output files`
+- Gene families
+```bash
+# Gene Family	$SAMPLENAME_Abundance-RPKs
+READS_UNMAPPED        187.0
+UniRef50_unknown        150.0
+UniRef50_unknown|g__Bacteroides.s__Bacteroides_fragilis 150.0
+UniRef50_A6L0N6: Conserved protein found in conjugate transposon	67.0
+UniRef50_A6L0N6: Conserved protein found in conjugate transposon|g__Bacteroides.s__Bacteroides_fragilis	57.0
+UniRef50_A6L0N6: Conserved protein found in conjugate transposon|g__Bacteroides.s__Bacteroides_finegoldii	5.0
+UniRef50_A6L0N6: Conserved protein found in conjugate transposon|g__Bacteroides.s__Bacteroides_stercoris	4.0
+UniRef50_A6L0N6: Conserved protein found in conjugate transposon|unclassified	1.0
+UniRef50_O83668: Fructose-bisphosphate aldolase	60.0
+UniRef50_O83668: Fructose-bisphosphate aldolase|g__Bacteroides.s__Bacteroides_vulgatus	31.0
+UniRef50_O83668: Fructose-bisphosphate aldolase|g__Bacteroides.s__Bacteroides_thetaiotaomicron	22.0
+UniRef50_O83668: Fructose-bisphosphate aldolase|g__Bacteroides.s__Bacteroides_stercoris	7.0
+```
+
+Reactions file 文件HUMAnN v3不再输出
+
+- Pathway abundance
+```bash
+# Pathway	$SAMPLENAME_Abundance
+UNMAPPED	140.0
+UNINTEGRATED	87.0
+UNINTEGRATED|g__Bacteroides.s__Bacteroides_caccae	23.0
+UNINTEGRATED|g__Bacteroides.s__Bacteroides_finegoldii	20.0
+UNINTEGRATED|unclassified	12.0
+PWY0-1301: melibiose degradation	57.5
+PWY0-1301: melibiose degradation|g__Bacteroides.s__Bacteroides_caccae	32.5
+PWY0-1301: melibiose degradation|g__Bacteroides.s__Bacteroides_finegoldii	4.5
+PWY0-1301: melibiose degradation|unclassified	3.0
+PWY-5484: glycolysis II (from fructose-6P)	54.7
+PWY-5484: glycolysis II (from fructose-6P)|g__Bacteroides.s__Bacteroides_caccae	16.7
+PWY-5484: glycolysis II (from fructose-6P)|g__Bacteroides.s__Bacteroides_finegoldii	8.0
+PWY-5484: glycolysis II (from fructose-6P)|unclassified	6.0
+```
+
+
+- MetaPhlAn结果合并
 ```bash
 merge_metaphlan_tables.py result/humann/*_metaphlan_bugs_list.tsv | sed 's/_metaphlan_bugs_list//g' | ~/miniconda3/bin/csvtk pretty -t | less
 ```
