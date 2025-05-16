@@ -73,7 +73,10 @@ done
 ```
 
 ### 4. humann
-humann用于物种和功能注释，是read-based方法，不用组装，直接进行物种注释和功能分析。[参考](https://github.com/biobakery/humann)
+humann用于物种和功能注释，是read-based方法，不用组装，直接进行物种注释和功能分析。
+
+[参考1](https://github.com/biobakery/humann)
+[参考2](https://zhuanlan.zhihu.com/p/240910229).
 - 安装
 ```bash
 pip install humann
@@ -117,7 +120,17 @@ $ humann_config  --update database_folders utility_mapping /home/zhusitao/minico
 # HUMAnN configuration file updated: database_folders : utility_mapping = /home/zhusitao/miniconda3/envs/metagenome/lib/python3.6/site-packages/humann/data/misc
 
 ```
+- 执行
+```bash
+## 输入文件可以为多种数据形式，包括测序文件及压缩格（fasta, fastq, fasta.gz, fastq,gz) , 比对文件（sam, bam等），还有gene table文件也可以。
+## 输出指定路径，运行后一般输出genefamilies，pathcoverage，pathabundance三个文件和比对过程中的中间文件（包括metaphlan的结果）
+humann --input $SAMPLE --output $OUTPUT_DIR --threads 24
 
+```
+- 合并文件
+```bash
+humann2_join_tables --input $OUTPUT_DIR --output humann2_genefamilies.tsv --file_name genefamilies_relab
+```
 
 ### 5 contigs-based
 使用不同的软件进行组装
