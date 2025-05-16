@@ -127,6 +127,12 @@ $ humann_config  --update database_folders utility_mapping /home/zhusitao/minico
 humann --input $SAMPLE --output $OUTPUT_DIR --threads 24
 
 ```
+- metaphlan结果合并
+
+```bash
+merge_metaphlan_tables.py result/humann/*_metaphlan_bugs_list.tsv | sed 's/_metaphlan_bugs_list//g' | ~/miniconda3/bin/csvtk pretty -t | less
+```
+
 - 合并文件
 ```bash
 humann2_join_tables --input $OUTPUT_DIR --output humann2_genefamilies.tsv --file_name genefamilies_relab
