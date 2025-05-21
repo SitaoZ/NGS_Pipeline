@@ -84,6 +84,44 @@ pip install humann
 humann_test
 ```
 
+- 数据库下载
+
+```bash
+# 显示可用的数据库
+humann_databases
+
+# 建立下载目录
+db=/data/zhusitao/pipeline/Metagenome/software/Humann/
+mkdir -p ${db}/db_humann3
+
+# 自动下载
+# 微生物泛基因组 16 GB
+humann_databases --download chocophlan full ${db}/db_humann3
+# 功能基因diamond索引 20 GB
+humann_databases --download uniref uniref90_diamond ${db}/db_humann3
+# 输助比对数据库 2.6 GB
+humann_databases --download utility_mapping full ${db}/db_humann3
+
+
+# 无法自动下载可以手动
+wget ftp://download.nmdc.cn/tools/meta/humann3/full_chocophlan.v201901_v31.tar.gz
+wget ftp://download.nmdc.cn/tools/meta/humann3/full_mapping_v201901b.tar.gz
+wget ftp://download.nmdc.cn/tools/meta/humann3/uniref90_annotated_v201901b_full.tar.gz
+# 安装、解压
+mkdir -p ${db}/db_humann3/chocophlan
+tar xvzf full_chocophlan.v201901_v31.tar.gz -C ${db}/db_humann3/chocophlan
+mkdir -p ${db}/db_humann3/utility_mapping
+tar xvzf full_mapping_v201901b.tar.gz -C ${db}/db_humann3/utility_mapping
+mkdir -p ${db}/db_humann3/uniref
+tar xvzf uniref90_annotated_v201901b_full.tar.gz -C ${db}/db_humann3/uniref
+
+```
+
+- 核对数据库
+```bash
+humann_config --print
+```
+
 - 路径修改
 ```bash
 $ humann_config
@@ -108,13 +146,19 @@ $ humann_config
 # output_format : remove_stratified_output = False
 # output_format : remove_column_description_output = False
 
+# 增加线程数
+
+humann_config --update run_modes threads 24
+
 # 修改nucleotide路径
 humann_config  --update database_folders nucleotide /data/zhusitao/project/songLab/01.Metagenome/qxx/06.Meta/05.humann/humann_database_location/chocophlan
 # HUMAnN configuration file updated: database_folders : nucleotide = /data/zhusitao/project/songLab/01.Metagenome/qxx/06.Meta/05.humann/humann_database_location/chocophlan
 
+# 设置核酸、蛋白和注释库位置
 # 修改protein路径
 $ humann_config  --update database_folders protein /data/zhusitao/project/songLab/01.Metagenome/qxx/06.Meta/05.humann/humann_database_location/uniref
 # HUMAnN configuration file updated: database_folders : protein = /data/zhusitao/project/songLab/01.Metagenome/qxx/06.Meta/05.humann/humann_database_location/uniref
+
 # 修改utility_mapping路径
 $ humann_config  --update database_folders utility_mapping /home/zhusitao/miniconda3/envs/metagenome/lib/python3.6/site-packages/humann/data/misc
 # HUMAnN configuration file updated: database_folders : utility_mapping = /home/zhusitao/miniconda3/envs/metagenome/lib/python3.6/site-packages/humann/data/misc
