@@ -90,3 +90,143 @@ msconvert path/to/your_data.d \
 5.  **软件版本：** 使用**最新版本**的 ProteoWizard (MSConvert)，以确保对 Bruker TIMS 数据格式的最佳支持和 bug 修复。
 
 **遵循以上参数设置（特别是强制峰检测、64位精度和合理的MS2阈值），能有效地在转换阶段去除大量噪音，生成高质量的 `mzML` 文件，为后续 TIMS-TOF Pro 2 数据的深度分析（利用CCS维度！）奠定坚实基础。** 记得根据你的具体样本和下游流程微调阈值。
+
+
+
+
+
+
+在 **MZmine 3** 中分析 Bruker TIMS-TOF Pro 2 生成的数据（通常已转换为 `mzML` 格式）**需要充分利用其离子淌度维度（CCS/1/K0值）**，以显著提升代谢物/脂质鉴定的准确性和异构体分辨能力。以下是关键步骤和针对性设置：
+
+---
+
+## **核心优势：利用离子淌度 (CCS) 维度**
+TIMS-TOF Pro 2 的核心价值在于提供**碰撞截面 (CCS)** 信息。在 MZmine 中，这可用于：
+1.  **增强峰解卷积/特征检测：** 在保留时间 (RT)、质荷比 (m/z) 基础上，增加 **CCS** 作为第三维分离依据，更好区分共洗脱/同m/z的异构体。
+2.  **降低假阳性：** 将实验 CCS 值与数据库/预测值匹配，作为鉴定的强有力佐证。
+3.  **分辨异构体：** 区分结构/立体异构体（相同 m/z，不同 CCS）。
+
+---
+
+## **MZmine 3 分析 TIMS-TOF Pro 2 数据工作流程**
+
+### **步骤 1：数据导入与参数设置**
+1.  **导入 `mzML` 文件：**
+    *   确保转换时**保留了离子淌度信息**（在 MSConvert 中必须使用 `64-bit precision`）。
+    *   MZmine 自动识别 `inverse reduced ion mobility (1/K0)` 字段。
+2.  **设置原始数据参数 (Raw Data Parameters)：**
+    *   **MS level:** 选择 1 和 2。
+    *   **m/z range:** 根据实验设定。
+    *   **Mobility type:** 确认显示为 `Inverse reduced ion mobility (1/K0)` 或类似。
+    *   **Mobility range:** 通常保留默认（全范围），除非有特定范围要求。
+
+### **步骤 2：质量检测 (Mass Detection) - *通常跳过***
+*   TIMS-TOF Pro 2 数据在转换时（如用 MSConvert + Peak Picking）**应已中心化 (centroided)**。MZmine 通常可直接使用这些峰，无需再次进行质量检测。如果数据仍是 Profile 模式，需在此步骤进行峰检测。
+
+### **步骤 3：构建离子淌度谱图 (Build Ion Mobility Spectra) - *关键步骤***
+*   **目的：** 将连续的淌度漂移数据聚合成离散的离子淌度谱图 (IMS)，类似将连续的质谱扫描聚合成色谱峰。
+*   **模块：** `Ion mobility processing` -> `Build ion mobility spectra`
+*   **关键参数：**
+    *   **Frame merging:** 如何合并连续的 TIMS 帧（通常选 `Sum` 或 `Maximum`）。
+    *   **Scoring:** 选择构建 IMS 时评估峰质量的方法（如 `Maximum height`, `Total area`）。
+    *   **Noise level:** 设定阈值过滤低强度淌度信号（谨慎设置，避免丢失弱信号）。
+
+### **步骤 4：色谱图构建 (ADAP Chromatogram Builder) - *核心，利用淌度维度***
+*   **目的：** 在 RT-m/z-CCS 三维空间中识别色谱峰（特征）。
+*   **模块：** `Chromatogram building` -> `ADAP Chromatogram Builder` (推荐，处理复杂数据能力强)。
+*   **关键参数 - 优化以利用 CCS:**
+    *   **Min group size (scans):** `2` (或 `3`) - 允许在少数扫描中检测到的真实峰。
+    *   **Group intensity threshold:** 设置较低值（如 `1000`）以捕获弱峰，后续可过滤。
+    *   **Min highest intensity:** `1000 - 5000` (根据数据强度调整)。
+    *   **m/z tolerance:** 根据仪器分辨率设置 (e.g., `0.002 m/z` 或 `5 ppm`)。
+    *   **✳ 关键 - 利用离子淌度 (CCS 维度):**
+        *   **Mobility tolerance:** 设定允许的淌度差异范围以将离子归为同一特征。**这是关键参数！**
+            *   单位通常是 `1/K0 * 10^{-3} V*s/cm²` (有时直接显示为 `1/K0`)。
+            *   合理起始值： **`0.02 - 0.05`**。需根据数据质量和淌度分辨率优化。太宽会导致共洗脱离子合并，太窄会拆分同一化合物。
+        *   **Mobility type:** 确认是 `Inverse reduced ion mobility (1/K0)`。
+        *   **Require same mobility?:** 通常 **`Yes`**。强制要求归入同一色谱峰的离子必须有相似的淌度（即在 RT-m/z-CCS 三维空间共迁移）。
+
+### **步骤 5：色谱峰解卷积 (Chromatographic Deconvolution)**
+*   **目的：** 分离共洗脱峰（尤其同 m/z 但不同 CCS 的异构体）。
+*   **模块：** `Peak deconvolution` -> `Local Minimum Resolver` 或 `Wavelets (ADAP)`。
+*   **关键参数：**
+    *   **Chromatographic threshold:** `5% - 15%`。
+    *   **Search minimum in RT range (scans):** `3 - 5`。
+    *   **Min relative height:** `1% - 5%`。
+    *   **Min absolute height:** 根据数据设定。
+    *   **Min ratio of peak top/edge:** `1.5 - 2`。
+    *   **✳ 关键 - 解卷积维度：** 确保算法考虑了 **CCS 维度**。在参数中寻找与 `mobility` 或 `ion mobility` 相关的选项，确保其启用或作为约束条件。
+
+### **步骤 6：同位素分组 (Isotopic Peak Grouper)**
+*   识别同一化合物的同位素峰簇。
+*   参数设置与常规 LC-MS 分析类似，关注 `m/z tolerance` 和 `RT tolerance`。淌度在此步骤通常不是主要依据，但可设置宽松的 `Mobility tolerance` (如 `0.1`)。
+
+### **步骤 7：峰对齐 (Join Aligner)**
+*   将不同样品中的相同特征（RT-m/z-CCS）对齐。
+*   **关键参数：**
+    *   **m/z tolerance:** `0.002 m/z` 或 `5-10 ppm`。
+    *   **RT tolerance:** `0.1 - 0.5 min` (根据色谱分离度)。
+    *   **✳ 关键 - 淌度对齐：**
+        *   **Mobility tolerance:** **必须设置！** 使用与色谱图构建相同或稍宽的值 (e.g., `0.03 - 0.07`)。这是确保同一化合物在不同样本中通过 **RT-m/z-CCS** 三维信息正确匹配的关键。
+        *   **Weight for mobility:** 可赋予较高权重（如 `2`），强调 CCS 匹配的重要性。
+
+### **步骤 8：峰过滤 (Peak Filtering)**
+*   根据空白样本、QC 样本、峰形、强度、信号稳定性等过滤假阳性峰。
+*   可添加基于 **CCS 值合理性**的过滤（如果已知目标物 CCS 范围）。
+
+### **步骤 9：化合物鉴定 (Compound Identification) - *关键，整合 CCS***
+*   **方法：**
+    1.  **精确质量匹配：** 利用 `m/z` 搜索数据库 (如 HMDB, LipidMaps, MoNA)。
+    2.  **MS/MS 谱图匹配：** 导入 MS2 数据，使用内置或外部工具 (如 SIRIUS+CSI:FingerID, GNPS) 进行谱库匹配或从头预测。
+    3.  **✳ 核心优势 - CCS 匹配/过滤：**
+        *   **数据库：** 使用包含 CCS 值的数据库 (如部分 HMDB 条目, LipidCCS, MetCCS 预测值)。
+        *   **MZmine 操作：**
+            *   在鉴定结果中，**添加 CCS 作为关键注释信息**。
+            *   **手动/半自动过滤：** 将实验 CCS 值与数据库/预测 CCS 值比较。设定允许偏差（如 **< 2-3%** 相对误差）。显著偏离的候选化合物可降低优先级或排除。
+            *   **脚本/自定义模块：** 可使用 MZmine 的脚本功能或开发自定义模块，自动计算 CCS 偏差并打分/排序候选化合物。
+
+### **步骤 10：定量与统计分析**
+*   导出包含峰面积/高度的特征表 (含 RT, m/z, CCS)。
+*   进行归一化、缺失值填补。
+*   使用 MZmine 内置统计模块或导出到外部工具 (如 MetaboAnalyst, R) 进行：
+    *   单变量分析 (T-test, ANOVA, Fold Change)。
+    *   多变量分析 (PCA, PLS-DA, OPLS-DA) - **可将 CCS 作为附加变量输入**。
+
+### **步骤 11：可视化与解释**
+*   **利用淌度维度可视化：**
+    *   **Mobilograms (淌度谱图)：** 查看特定 m/z/RT 窗口下的离子淌度分布，识别异构体峰。
+    *   **3D 图 (RT vs m/z vs Mobility/Intensity)：** 直观展示特征在三维空间中的分布。
+    *   **CCS vs RT / CCS vs m/z 散点图：** 发现不同类别化合物（如脂质类别）的 CCS 分布规律。
+*   通路分析 (KEGG, Reactome)、富集分析。
+
+---
+
+## **关键挑战与注意事项**
+
+1.  **CCS 数据库与预测：**
+    *   公共 CCS 数据库覆盖度有限。积极查找或使用预测工具 (如 MetCCS, DeepCCS)。
+    *   实验条件 (漂移气体、温度、电压) 影响 CCS 值，需确保数据库/预测值与你的实验条件匹配。使用内标校准 CCS 值可提高准确性。
+2.  **MZmine 对淌度数据处理成熟度：**
+    *   相比 Bruker MetaboScape，MZmine 对 TIMS 数据的深度整合和自动化 CCS 利用仍在发展中。部分步骤 (如基于 CCS 的数据库自动打分过滤) 可能需要手动或脚本辅助。
+    *   确保使用 **MZmine 3 的最新版本**，其对离子淌度的支持持续改进。
+3.  **参数优化 (尤其淌度容差)：**
+    *   `Mobility tolerance` 是平衡灵敏度和特异性的关键。**必须根据仪器淌度分辨率和数据质量仔细优化！** 使用标准品或已知化合物验证。
+4.  **异构体分析：**
+    *   对于已知存在异构体的化合物 (如脂质、糖类)，重点关注它们在淌度维度的分离情况。比较不同样品间异构体比例的差异可能具有生物学意义。
+5.  **DIA (dia-PASEF) 数据处理：**
+    *   MZmine 主要设计用于 DDA 和全扫描模式。处理 **DIA (dia-PASEF)** 数据更复杂，需要：
+        *   使用支持 DIA 解卷积的算法 (MZmine 相关模块可能仍在开发或实验性)。
+        *   或先生成谱图库 (如从 DDA 数据)，再进行靶向提取 (类似 Skyline)。目前 MZmine 对 DIA 的支持不如 Spectronaut/DIA-NN 成熟。
+
+---
+
+## **总结**
+
+在 MZmine 3 中分析 TIMS-TOF Pro 2 数据，**核心在于将离子淌度 (CCS/1/K0) 作为与保留时间 (RT)、质荷比 (m/z) 同等重要的维度，贯穿整个流程：**
+
+1.  **特征检测 (Chromatogram Building)：** 使用 `m/z`, `RT`, `Mobility tolerance` 三维约束。
+2.  **峰对齐 (Alignment)：** 使用 `m/z`, `RT`, `Mobility tolerance` 三维匹配。
+3.  **化合物鉴定：** 将 **实验 CCS 值** 与数据库/预测值比对，作为关键过滤/验证依据。
+4.  **可视化：** 利用淌度谱图、3D 图等揭示异构体信息。
+
+虽然需要更多手动整合 CCS 信息，且对 DIA 支持有限，但 MZmine 3 仍是分析 TIMS-TOF Pro 2 非靶向代谢/脂质数据的强大免费工具。**充分利用 CCS 维度是其获得高质量、高可信度结果的关键，也是区别于普通 LC-MS 分析的核心优势。** 密切留意 MZmine 对离子淌度支持功能的后续更新。对于 Bruker 平台深度整合和自动化 CCS 利用，MetaboScape 仍是更“一站式”的解决方案。
