@@ -76,7 +76,7 @@ BCR测序是通过高通量测序技术检测靶向扩增后的BCR重链和轻�
 
 
 
-## Running Cell Ranger multi with 5' Immune Profiling Data
+## **Running Cell Ranger multi with 5' Immune Profiling Data**
 
 ###  数据下载
 we will work with the human B cells dataset from a Healthy Donor (1k cells)
@@ -97,8 +97,99 @@ wget https://cf.10xgenomics.com/supp/cell-exp/refdata-gex-GRCh38-2020-A.tar.gz
 tar -xf refdata-gex-GRCh38-2020-A.tar.g
 
 # Download the pre-build VDJ reference 
-curl -O https://cf.10xgenomics.com/supp/cell-vdj/refdata-cellranger-vdj-GRCh38-alts-ensembl-5.0.0.tar.gz
+# curl -O https://cf.10xgenomics.com/supp/cell-vdj/refdata-cellranger-vdj-GRCh38-alts-ensembl-5.0.0.tar.gz
+wget https://cf.10xgenomics.com/supp/cell-vdj/refdata-cellranger-vdj-GRCh38-alts-ensembl-5.0.0.tar.gz
 tar -xf refdata-cellranger-vdj-GRCh38-alts-ensembl-5.0.0.tar.gz
+
 
 ```
 
+
+### 配置文件
+```bash
+nano multi_config.csv
+
+[gene-expression]
+reference,/jane.doe/working-directory/refdata-gex-GRCh38-2020-A
+expect-cells,1000
+create-bam,true 
+[vdj]
+reference,/jane.doe/working-directory/refdata-cellranger-vdj-GRCh38-alts-ensembl-5.0.0
+[libraries]
+fastq_id,fastqs,lanes,feature_types,subsample_rate
+sc5p_v2_hs_B_1k_5gex,/jane.doe/working-directory/dataset-multi-practice/sc5p_v2_hs_B_1k_multi_5gex_b_fastqs/sc5p_v2_hs_B_1k_5gex_fastqs,1|2,gene expression,
+sc5p_v2_hs_B_1k_b,/jane.doe/working-directory/dataset-multi-practice/sc5p_v2_hs_B_1k_multi_5gex_b_fastqs/sc5p_v2_hs_B_1k_b_fastqs,1|2,vdj,
+
+
+```
+
+
+### 任务执行
+
+```bash
+mkdir runs/
+cd runs/
+
+cellranger multi --id=HumanB_Cell_multi --csv=../multi_config.csv
+
+```
+
+### 结果目录
+
+```bash
+── runs
+    └── HumanB_Cell_multi
+        ├── _cmdline
+        ├── _filelist
+        ├── _finalstate
+        ├── HumanB_Cell_multi.mri.tgz
+        ├── _invocation
+        ├── _jobmode
+        ├── _log
+        ├── _mrosource
+        ├── outs/
+        ├── _perf
+        ├── SC_MULTI_CS/
+        ├── _sitecheck
+        ├── _tags
+        ├── _timestamp
+        ├── _uuid
+        ├── _vdrkill
+        └── _versions
+```
+
+```bash
+── runs
+    └── HumanB_Cell_multi
+        └──outs
+            ├── config.csv
+            ├── multi
+            │   ├── count
+            │   │   ├── raw_cloupe.cloupe
+            │   │   ├── raw_feature_bc_matrix
+            │   │   ├── raw_feature_bc_matrix.h5
+            │   │   ├── raw_molecule_info.h5
+            │   │   ├── unassigned_alignments.bam
+            │   │   └── unassigned_alignments.bam.bai
+            │   └── vdj_b
+            │       ├── all_contig_annotations.bed
+            │       ├── all_contig_annotations.csv
+            │       ├── all_contig_annotations.json
+            │       ├── all_contig.bam
+            │       ├── all_contig.bam.bai
+            │       ├── all_contig.fasta
+            │       ├── all_contig.fasta.fai
+            │       └── all_contig.fastq
+            ├── per_sample_outs
+            │   └── HumanB_Cell_multi
+            │       ├── count
+            │       ├── metrics_summary.csv
+            │       ├── vdj_b
+            │       └── web_summary.html
+            └── vdj_reference
+                ├── fasta
+                │   ├── donor_regions.fa
+                │   └── regions.fa
+                └── reference.json
+
+```
