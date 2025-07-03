@@ -1,4 +1,4 @@
-## ImmuneRepertoire 免疫组库
+# ImmuneRepertoire 免疫组库
 
 ## 细胞免疫和体液免疫
 
@@ -74,4 +74,31 @@ BCR测序是通过高通量测序技术检测靶向扩增后的BCR重链和轻�
 
 主要应用于血液肿瘤微小残留病（MRD）检测、自身免疫性疾病、疫苗/抗体药物研发、肿瘤或传染病免疫反应监测等领域。
 
+
+
+## Running Cell Ranger multi with 5' Immune Profiling Data
+
+###  数据下载
+we will work with the human B cells dataset from a Healthy Donor (1k cells)
+
+```bash
+mkdir dataset-multi-practice
+cd dataset-multi-practice
+
+curl -LO https://cf.10xgenomics.com/samples/cell-vdj/6.0.0/sc5p_v2_hs_B_1k_multi_5gex_b_Multiplex/sc5p_v2_hs_B_1k_multi_5gex_b_Multiplex_fastqs.tar
+# wget https://cf.10xgenomics.com/samples/cell-vdj/6.0.0/sc5p_v2_hs_B_1k_multi_5gex_b_Multiplex/sc5p_v2_hs_B_1k_multi_5gex_b_Multiplex_fastqs.tar
+
+tar -xf sc5p_v2_hs_B_1k_multi_5gex_b_Multiplex_fastqs.tar
+
+
+# Download the reference transcriptome and V(D)J reference
+# curl -O https://cf.10xgenomics.com/supp/cell-exp/refdata-gex-GRCh38-2020-A.tar.gz
+wget https://cf.10xgenomics.com/supp/cell-exp/refdata-gex-GRCh38-2020-A.tar.gz
+tar -xf refdata-gex-GRCh38-2020-A.tar.g
+
+# Download the pre-build VDJ reference 
+curl -O https://cf.10xgenomics.com/supp/cell-vdj/refdata-cellranger-vdj-GRCh38-alts-ensembl-5.0.0.tar.gz
+tar -xf refdata-cellranger-vdj-GRCh38-alts-ensembl-5.0.0.tar.gz
+
+```
 
