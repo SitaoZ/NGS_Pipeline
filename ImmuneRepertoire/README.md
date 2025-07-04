@@ -193,3 +193,143 @@ cellranger multi --id=HumanB_Cell_multi --csv=../multi_config.csv
                 └── reference.json
 
 ```
+
+
+
+
+
+要使用 `cellranger mkvdjref` 构建 **mouse GRCm39 (mm39)** 的 VDJ 数据库，请遵循以下详细步骤。此方法基于 10x Genomics 官方推荐流程，结合 GENCODE 数据构建完整的 T/B 细胞受体数据库：
+
+---
+
+### **小鼠VDJ数据库构建完整流程**
+#### 1. **下载参考基因组和注释**
+```bash
+# 创建目录
+mkdir -p GRCm39_VDJ && cd GRCm39_VDJ
+
+# 下载基因组 (GRCm39)
+wget https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/GRCm39.primary_assembly.genome.fa.gz
+gunzip GRCm39.primary_assembly.genome.fa.gz
+
+# 下载注释文件
+wget https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/gencode.vM33.annotation.gtf.gz
+gunzip gencode.vM33.annotation.gtf.gz
+```
+
+#### 2. **提取 VDJ 基因序列**
+```bash
+# 提取免疫球蛋白 (Ig) 和 T 细胞受体 (TR) 基因
+grep -E 'gene_type "(IG|TR)_[VDJC]_gene"' gencode.vM33.annotation.gtf > vdj_genes.gtf
+
+# 提取序列 (使用 gffread)
+gffread -w vdj_sequences.fa -g GRCm39.primary_assembly.genome.fa vdj_genes.gtf
+```
+
+#### 3. **格式化 FASTA 头**
+Cell Ranger 要求 FASTA 头格式为：  
+`>gene_id|gene_name|gene_type`
+
+使用此命令格式化：
+```bash
+awk '{
+  if (/^>/) {
+    match($0, /gene_id "([^"]+)"/, id);
+    match($0, /gene_name "([^"]+)"/, name);
+    match($0, /gene_type "([^"]+)"/, type);
+    print ">" id[1] "|" name[1] "|" type[1];
+  } else {
+    print
+  }
+}' vdj_sequences.fa > vdj_formatted.fa
+```
+
+#### 4. **构建 VDJ 数据库**
+```bash
+cellranger mkvdjref \
+  --genome=GRCm39_VDJ_ref \
+  --fasta=vdj_formatted.fa \
+  --genes=gencode.vM33.annotation.gtf \
+  --seqs=vdj_sequences.fa  # 可选：确保包含所有序列
+```
+
+---
+
+### **关键参数说明**
+| 参数 | 作用 |
+|------|------|
+| `--genome` | 输出目录名称 (自动创建) |
+| `--fasta` | 格式化后的 VDJ 序列 FASTA |
+| `--genes` | 原始 GTF 注释文件 |
+| `--seqs` | 原始 VDJ 序列 (备份) |
+
+---
+
+### **验证数据库**
+检查输出目录结构：
+```bash
+tree GRCm39_VDJ_ref
+```
+应包含：
+```
+GRCm39_VDJ_ref/
+├── fasta/                 # VDJ 基因序列
+├── genes.gtf              # 过滤后的注释
+├── reference.json         # 配置文件
+└── regions.gtf            # 基因区域定义
+```
+
+---
+
+### **使用数据库**
+在 `cellranger vdj` 中指定引用：
+```bash
+cellranger vdj \
+  --id=my_vdj_analysis \
+  --reference=GRCm39_VDJ_ref \
+  --fastqs=path/to/fastqs \
+  --sample=mysample
+```
+
+---
+
+### **常见问题解决**
+#### 1. **缺少基因错误**
+若报错 `No V/D/J/C genes found`：
+- **原因**：GTF 中基因类型标签不匹配
+- **修复**：检查 GTF 中的基因类型名称：
+  ```bash
+  grep -E 'IG_V_gene|TR_V_gene' gencode.vM33.annotation.gtf
+  ```
+- **手动添加缺失基因**（如果需要）
+
+#### 2. **版本兼容性**
+- **Cell Ranger ≥7.0**：支持 GRCm39
+- **旧版本**：需使用 mm10 或转换坐标
+
+#### 3. **预建数据库替代方案**
+10x 官方提供的小鼠 VDJ 数据库（基于 mm10）：
+```bash
+# 下载 mm10 预建库
+wget https://cf.10xgenomics.com/supp/cell-vdj/refdata-cellranger-vdj-GRCm38-alts-ensembl-7.1.0.tar.gz
+tar -xzf refdata-cellranger-vdj-GRCm38-alts-ensembl-7.1.0.tar.gz
+```
+
+---
+
+### **注意事项**
+1. **等位基因支持**：
+   - GENCODE 不包含等位基因变异，若需完整等位基因，从 IMGT 下载序列并合并
+   ```bash
+   # 示例：下载 IMGT IGHV 序列
+   wget http://www.imgt.org/download/V-QUEST/IMGT_V-QUEST_reference_directory/Mus_musculus/IG/IGHV.fasta
+   ```
+
+2. **数据来源验证**：
+   ```bash
+   # 检查包含的基因数量
+   grep -c "IG_V_gene" vdj_genes.gtf  # V 基因数
+   grep -c "TR_J_gene" vdj_genes.gtf  # J 基因数
+   ```
+
+此流程基于 Cell Ranger 官方文档和 GENCODE 数据，确保与 10x VDJ 分析流程兼容。
