@@ -1,4 +1,4 @@
-# NGS_Pipeline
+# NGS Pipeline
 a collection of NGS pipeline in genomics
 
 # HGT
